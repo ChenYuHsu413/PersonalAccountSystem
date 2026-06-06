@@ -1,0 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* 字型 */
+  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* 配色系統 (現代暗黑美學) */
+  --bg-app: #080c14;
+  --bg-card: rgba(22, 30, 46, 0.65);
+  --bg-card-hover: rgba(29, 39, 60, 0.85);
+  --bg-input: rgba(13, 20, 35, 0.8);
+  
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-color-active: rgba(0, 242, 254, 0.6);
+  
+  --text-primary: #f0f4f8;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  /* 漸層配色 */
+  --grad-green-start: #00f2fe;
+  --grad-green-end: #4facfe;
+  --grad-purple-start: #a18cd1;
+  --grad-purple-end: #fbc2eb;
+  --grad-accent-start: #8ec5fc;
+  --grad-accent-end: #e0c3fc;
+  
+  /* 功能色 */
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* 陰影與毛玻璃效果 */
+  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --backdrop-blur: blur(16px);
+  --border-radius-lg: 20px;
+  --border-radius-md: 14px;
+  --border-radius-sm: 8px;
+  
+  /* 動畫 */
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 基礎重設 */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+  background-image: 
+    radial-gradient(at 10% 10%, rgba(79, 172, 254, 0.08) 0px, transparent 50%),
+    radial-gradient(at 90% 90%, rgba(161, 140, 209, 0.08) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* 捲軸美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 常用元件與工具類別 */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--border-radius-lg);
+  transition: var(--transition-smooth);
+}
+
+.glass-panel:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.text-gradient-green {
+  background: linear-gradient(135deg, var(--grad-green-start), var(--grad-green-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-purple {
+  background: linear-gradient(135deg, var(--grad-purple-start), var(--grad-purple-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.btn-gradient-green {
+  background: linear-gradient(135deg, var(--grad-green-start), var(--grad-green-end));
+  border: none;
+  color: #041221;
+  font-weight: 600;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: 0 4px 14px 0 rgba(79, 172, 254, 0.3);
+}
+
+.btn-gradient-green:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(79, 172, 254, 0.5);
+}
+
+.btn-gradient-green:active {
+  transform: translateY(1px);
+}
+
+.btn-gradient-purple {
+  background: linear-gradient(135deg, var(--grad-purple-start), var(--grad-purple-end));
+  border: none;
+  color: #1a0a2a;
+  font-weight: 600;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: 0 4px 14px 0 rgba(161, 140, 209, 0.3);
+}
+
+.btn-gradient-purple:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(161, 140, 209, 0.5);
+}
+
+.btn-gradient-purple:active {
+  transform: translateY(1px);
+}
+
+/* 手機版適配佈局容器 */
+.app-container {
+  max-width: 500px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  position: relative;
+}
+
+/* 點擊觸控動畫反饋 */
+.clickable {
+  transition: var(--transition-smooth);
+  cursor: pointer;
+}
+.clickable:active {
+  transform: scale(0.97);
+}
+
+/* 載入動畫骨架屏 (Skeleton) */
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+}
+
+.skeleton {
+  animation: pulse 1.5s infinite ease-in-out;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+}
