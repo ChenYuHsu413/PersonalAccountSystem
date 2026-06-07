@@ -14,10 +14,12 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
   const [isDeleting, setIsDeleting] = useState(false);
 
   const formatCurrency = (val) => {
+    if (val === undefined || val === null || isNaN(val)) return '$0';
     return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(val);
   };
 
   const formatPercent = (val) => {
+    if (val === undefined || val === null || isNaN(val)) return '0.00%';
     return `${val > 0 ? '+' : ''}${val.toFixed(2)}%`;
   };
 
@@ -279,13 +281,13 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
                     <span className="stock-name">{stock.name}</span>
                   </div>
                   <div className="stock-cost">
-                    成本價: {stock.costPrice.toFixed(1)} | 庫存: {stock.shares.toLocaleString()} 股
+                    成本價: {(stock.costPrice || 0).toFixed(1)} | 庫存: {stock.shares.toLocaleString()} 股
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                   <div className="stock-price-block">
-                    <span className="stock-price">{stock.currentPrice.toFixed(2)}</span>
+                    <span className="stock-price">{(stock.currentPrice || 0).toFixed(2)}</span>
                     <span className={`stock-profit ${isProfit ? 'positive' : 'negative'}`}>
                       {isProfit ? '▲' : '▼'} {formatPercent(stock.profitRate)}
                     </span>

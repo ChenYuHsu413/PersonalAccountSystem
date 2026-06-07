@@ -157,7 +157,7 @@ function getStocksData() {
     // 只有標頭列，沒有資料
     return {
       stocks: [],
-      summary: { totalCost: 0, totalValue: 0, totalProfitLoss: 0 }
+      summary: { totalCost: 0, totalValue: 0, totalProfitLoss: 0, totalProfitRate: 0 }
     };
   }
 
