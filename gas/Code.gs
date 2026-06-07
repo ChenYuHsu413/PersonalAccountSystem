@@ -95,6 +95,9 @@ function doPost(e) {
     } else if (action === 'updateStockCostPrice') {
       // 更新股票成本價 (定義於 Database.gs)
       responseData = updateStockCostPrice(payload.row, payload.costPrice);
+    } else if (action === 'checkStock') {
+      // 驗證股票代碼並取得即時資料 (定義於 Database.gs)
+      responseData = checkStockTicker(payload.ticker);
     } else if (action === 'parseGemini') {
       // 呼叫 Gemini AI 解析自然語言並寫入 (定義於 Gemini.gs)
       responseData = parseAndAddWithGemini(payload);

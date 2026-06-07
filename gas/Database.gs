@@ -314,3 +314,58 @@ function updateStockCostPrice(row, costPrice) {
   sheet.getRange(row, 3).setValue(Number(costPrice));
   return { success: true, message: "成功將第 " + row + " 列平均成本更新為 " + costPrice + " 元！" };
 }
+
+/**
+ * 驗證股票代號是否存在於 GOOGLEFINANCE，並取得其名稱與即時價格
+ * @param {string} ticker 股票代號
+ */
+function checkStockTicker(ticker) {
+  if (!ticker) {
+    throw new Error("請輸入股票代碼！");
+  }
+  
+  var cleanTicker = ticker.trim().toUpperCase();
+  // 如果是純數字（台股），自動補上 TPE: 前綴
+  if (/^\d+$/.test(cleanTicker)) {
+    cleanTicker = 'TPE:' + cleanTicker;
+  }
+  
+  var ss = getSpreadsheet();
+  var tempSheetName = "TempStockCheck";
+  var tempSheet = ss.getSheetByName(tempSheetName);
+  
+  if (!tempSheet) {
+    tempSheet = ss.insertSheet(tempSheetName);
+    try {
+      tempSheet.hideSheet();
+    } catch (e) {
+      console.warn("無法隱藏暫存工作表", e);
+    }
+  }
+  
+  // 清空舊資料
+  tempSheet.clear();
+  
+  // 寫入公式
+  tempSheet.getRange("A1").setFormula('=GOOGLEFINANCE("' + cleanTicker + '", "name")');
+  tempSheet.getRange("B1").setFormula('=GOOGLEFINANCE("' + cleanTicker + '", "price")');
+  
+  // 強制試算表重算公式
+  SpreadsheetApp.flush();
+  
+  var name = tempSheet.getRange("A1").getValue();
+  var price = tempSheet.getRange("B1").getValue();
+  
+  var nameStr = String(name).trim();
+  
+  // 檢查是否為錯誤回傳，如 #N/A, #REF!, #VALUE! 或空值，或是價格無效
+  if (!name || nameStr === "" || nameStr.indexOf("#") === 0 || nameStr.indexOf("Error") === 0 || isNaN(price) || price === "" || Number(price) <= 0) {
+    throw new Error("查無此股票代號 '" + cleanTicker + "'，請確認輸入是否正確。例如台股如 2330 需輸入 TPE:2330 (或純數字 2330)，美股如 AAPL 需輸入 NASDAQ:AAPL。");
+  }
+  
+  return {
+    ticker: cleanTicker,
+    name: nameStr,
+    currentPrice: Number(price)
+  };
+}

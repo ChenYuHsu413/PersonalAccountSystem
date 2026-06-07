@@ -372,6 +372,43 @@ function App() {
     }
   };
 
+  // 呼叫 POST 驗證股票代號並取得即時價格與名稱
+  const handleCheckStock = async (ticker) => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return null;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'checkStock',
+          payload: { ticker }
+        })
+      });
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        showToast('🔍 股票驗證成功！已自動填入資料。', 'success');
+        return result.data;
+      } else {
+        showToast(`驗證失敗: ${result.message}`, 'error');
+        return null;
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('驗證連線失敗，請確認網路與後端設定。', 'error');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* 標頭 */}
@@ -490,6 +527,7 @@ function App() {
             onDeleteStock={handleDeleteStock}
             onUpdateStockShares={handleUpdateStockShares}
             onUpdateStockCostPrice={handleUpdateStockCostPrice}
+            onCheckStock={handleCheckStock}
           />
         )}
 

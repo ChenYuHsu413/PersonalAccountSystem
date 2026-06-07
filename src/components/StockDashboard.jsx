@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function StockDashboard({ data, loading, onRefresh, onAddStock, onDeleteStock, onUpdateStockShares, onUpdateStockCostPrice }) {
+export default function StockDashboard({ data, loading, onRefresh, onAddStock, onDeleteStock, onUpdateStockShares, onUpdateStockCostPrice, onCheckStock }) {
   const { stocks = [], summary = { totalCost: 0, totalValue: 0, totalProfitLoss: 0, totalProfitRate: 0 } } = data || {};
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -91,6 +91,31 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
       if (success) {
         setEditingCostRow(null);
       }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleVerifyTicker = async () => {
+    if (!ticker.trim()) {
+      alert('請先輸入股票代碼！');
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const result = await onCheckStock(ticker.trim());
+      if (result) {
+        setName(result.name);
+        setCostPrice(result.currentPrice);
+        setShares('1000'); // 預設 1000 股
+        if (result.ticker) {
+          setTicker(result.ticker);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert(e.message || '驗證出錯');
     } finally {
       setIsSaving(false);
     }
@@ -229,9 +254,10 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
             </div>
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group" style={{ marginBottom: '0' }}>
-                  <label className="form-label" style={{ fontSize: '12px' }}>股票代號 (例: TPE:2330)</label>
+              {/* 第一行：股票代碼與驗證按鈕 */}
+              <div className="form-group" style={{ marginBottom: '0' }}>
+                <label className="form-label" style={{ fontSize: '12px' }}>股票代號 (例: TPE:2330)</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type="text"
                     className="form-input"
@@ -239,32 +265,55 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
                     value={ticker}
                     onChange={(e) => setTicker(e.target.value)}
                     required
-                    style={{ padding: '8px 12px', fontSize: '14px' }}
+                    style={{ padding: '8px 12px', fontSize: '14px', flex: 1 }}
                   />
-                  {ticker && /^\d+$/.test(ticker.trim()) && (
-                    <div style={{ fontSize: '10px', color: '#34d399', marginTop: '4px', lineHeight: '1.2' }}>
-                      🟢 偵測為台股，送出時將自動補上為 <strong>TPE:{ticker.trim()}</strong>
-                    </div>
-                  )}
-                  {ticker && /^[a-zA-Z]+$/.test(ticker.trim()) && (
-                    <div style={{ fontSize: '10px', color: '#fbbf24', marginTop: '4px', lineHeight: '1.2' }}>
-                      🟡 提示：美股代號建議加上交易所字首，如 <strong>NASDAQ:{ticker.trim().toUpperCase()}</strong>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleVerifyTicker}
+                    disabled={loading || isSaving || !ticker.trim()}
+                    style={{
+                      padding: '8px 14px',
+                      fontSize: '12px',
+                      whiteSpace: 'nowrap',
+                      background: 'rgba(0, 242, 254, 0.1)',
+                      border: '1px solid rgba(0, 242, 254, 0.3)',
+                      color: '#00f2fe',
+                      borderRadius: 'var(--border-radius-md)',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                    className="clickable"
+                  >
+                    {isSaving ? '檢查中...' : '🔍 驗證並帶入'}
+                  </button>
                 </div>
-                <div className="form-group" style={{ marginBottom: '0' }}>
-                  <label className="form-label" style={{ fontSize: '12px' }}>股票名稱</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="台積電"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    style={{ padding: '8px 12px', fontSize: '14px' }}
-                  />
-                </div>
+                {ticker && /^\d+$/.test(ticker.trim()) && (
+                  <div style={{ fontSize: '10px', color: '#34d399', marginTop: '4px', lineHeight: '1.2' }}>
+                    🟢 偵測為台股，送出或驗證時將自動補上為 <strong>TPE:{ticker.trim()}</strong>
+                  </div>
+                )}
+                {ticker && /^[a-zA-Z]+$/.test(ticker.trim()) && (
+                  <div style={{ fontSize: '10px', color: '#fbbf24', marginTop: '4px', lineHeight: '1.2' }}>
+                    🟡 提示：美股代號建議加上交易所字首，如 <strong>NASDAQ:{ticker.trim().toUpperCase()}</strong>
+                  </div>
+                )}
               </div>
+
+              {/* 第二行：股票名稱 */}
+              <div className="form-group" style={{ marginBottom: '0' }}>
+                <label className="form-label" style={{ fontSize: '12px' }}>股票名稱</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="台積電 (驗證代碼後會自動填入)"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  style={{ padding: '8px 12px', fontSize: '14px' }}
+                />
+              </div>
+
+              {/* 第三行：成本與股數 */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group" style={{ marginBottom: '0' }}>
                   <label className="form-label" style={{ fontSize: '12px' }}>平均買入成本價</label>
