@@ -92,7 +92,18 @@
   font-family: var(--font-body);
   transition: var(--transition-smooth);
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: block;
   outline: none;
+}
+
+/* iOS Safari 日期選擇器相容性與排版修正 */
+input[type="date"].form-input {
+  align-items: center;
+  display: flex;
+  min-height: 47px;
+  -webkit-appearance: none;
 }
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
