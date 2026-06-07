@@ -30,17 +30,23 @@ function parseAndAddWithGemini(payload) {
     throw new Error("請提供要分析的記帳語句。");
   }
 
-  // 1. 呼叫 Gemini API 進行解析
-  var parsedData = parseTextWithGemini(text, apiKey);
+  // 1. 呼叫 Gemini API 進行解析 (傳回陣列)
+  var parsedDataArray = parseTextWithGemini(text, apiKey);
 
-  // 2. 將解析後的資料寫入 Google Sheets
-  var dbResult = addBookkeepingRecord(parsedData);
+  if (!Array.isArray(parsedDataArray)) {
+    parsedDataArray = [parsedDataArray];
+  }
+
+  // 2. 遍歷將解析後的資料寫入 Google Sheets
+  for (var i = 0; i < parsedDataArray.length; i++) {
+    addBookkeepingRecord(parsedDataArray[i]);
+  }
 
   return {
     success: true,
     rawText: text,
-    parsedData: parsedData,
-    message: "AI 成功解析並記帳！"
+    parsedData: parsedDataArray,
+    message: "AI 成功解析並記帳 " + parsedDataArray.length + " 筆資料！"
   };
 }
 
@@ -58,8 +64,8 @@ function parseTextWithGemini(text, apiKey) {
   var todayStr = Utilities.formatDate(today, timezone, "yyyy-MM-dd");
   var dayOfWeekStr = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][today.getDay()];
 
-  // 設計 Prompt 提示詞，限制其輸出 JSON 格式
-  var prompt = "你是一個專業的記帳助理。請將使用者的記帳語句解析為結構化的 JSON 資料。\n\n" +
+  // 設計 Prompt 提示詞，限制其輸出 JSON 格式 (陣列)
+  var prompt = "你是一個專業的記帳助理。請將使用者的記帳語句解析為結構化的 JSON 陣列。\n\n" +
                "【基準時間設定】\n" +
                "今天日期是: " + todayStr + " (" + dayOfWeekStr + ")。請以此日期為基準推算語句中的時間（如『昨天』為 " + 
                Utilities.formatDate(new Date(today.getTime() - 24*60*60*1000), timezone, "yyyy-MM-dd") + "，依此類推）。\n\n" +
@@ -68,14 +74,16 @@ function parseTextWithGemini(text, apiKey) {
                "【輸入語句】\n" +
                "「" + text + "」\n\n" +
                "【輸出格式規範】\n" +
-               "必須回傳一個合法的 JSON 物件，不可以包含任何 markdown 標記（如 ```json 等包裝字眼），也不要有任何多餘的前言或後記。格式如下：\n" +
-               "{\n" +
-               "  \"date\": \"YYYY-MM-DD (字串，推算出的實際日期)\",\n" +
-               "  \"category\": \"(上述分類清單中符合的一項)\",\n" +
-               "  \"item\": \"(商品或消費項目的簡短名稱)\",\n" +
-               "  \"amount\": (數值，消費金額),\n" +
-               "  \"note\": \"(選填，如地點、與誰一起等備註，無則為空字串)\"\n" +
-               "}";
+               "必須回傳一個合法的 JSON 陣列，即使只有一筆記帳資料也必須放在陣列中。不可以包含任何 markdown 標記（如 ```json 等包裝字眼），也不要有任何多餘的前言或後記。格式必須如下：\n" +
+               "[\n" +
+               "  {\n" +
+               "    \"date\": \"YYYY-MM-DD (字串，推算出的實際日期)\",\n" +
+               "    \"category\": \"(上述分類清單中符合的一項)\",\n" +
+               "    \"item\": \"(商品或消費項目的簡短名稱)\",\n" +
+               "    \"amount\": (數值，消費金額),\n" +
+               "    \"note\": \"(選填，如地點、與誰一起等備註，無則為空字串)\"\n" +
+               "  }\n" +
+               "]";
 
   var requestBody = {
     contents: [
@@ -86,7 +94,7 @@ function parseTextWithGemini(text, apiKey) {
       }
     ],
     generationConfig: {
-      responseMimeType: "application/json" // 強制 Gemini 1.5 回傳 JSON
+      responseMimeType: "application/json" // 強制 Gemini 回傳 JSON
     }
   };
 
@@ -117,12 +125,19 @@ function parseTextWithGemini(text, apiKey) {
     
     var parsedResult = JSON.parse(candidateText);
     
+    if (!Array.isArray(parsedResult)) {
+      parsedResult = [parsedResult];
+    }
+    
     // 欄位防呆與補正
-    if (!parsedResult.date) parsedResult.date = todayStr;
-    if (!parsedResult.category) parsedResult.category = "其它";
-    if (!parsedResult.item) parsedResult.item = text;
-    if (parsedResult.amount === undefined || isNaN(parsedResult.amount)) {
-      parsedResult.amount = 0;
+    for (var i = 0; i < parsedResult.length; i++) {
+      var item = parsedResult[i];
+      if (!item.date) item.date = todayStr;
+      if (!item.category) item.category = "其它";
+      if (!item.item) item.item = text;
+      if (item.amount === undefined || isNaN(item.amount)) {
+        item.amount = 0;
+      }
     }
     
     return parsedResult;

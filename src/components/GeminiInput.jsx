@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export default function GeminiInput({ onParseSubmit, loading }) {
   const [textInput, setTextInput] = useState('');
@@ -10,6 +10,8 @@ export default function GeminiInput({ onParseSubmit, loading }) {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [recognition, setRecognition] = useState(null);
+
+  const textareaRef = useRef(null);
 
   // 載入與儲存本機 LocalStorage 中的 API Key，方便使用者測試
   useEffect(() => {
@@ -25,6 +27,35 @@ export default function GeminiInput({ onParseSubmit, loading }) {
     }
   }, []);
 
+  // 徹底釋放麥克風占用與清理事件監聽
+  const cleanupSpeech = (recInstance) => {
+    if (recInstance) {
+      try {
+        recInstance.onstart = null;
+        recInstance.onresult = null;
+        recInstance.onerror = null;
+        recInstance.onend = null;
+      } catch (e) {
+        console.error('清理語音監聽器錯誤:', e);
+      }
+    }
+    setRecognition(null);
+  };
+
+  // 組件卸載時或辨識實例改變時清理
+  useEffect(() => {
+    return () => {
+      if (recognition) {
+        try {
+          recognition.stop();
+        } catch (e) {
+          // 忽略
+        }
+        cleanupSpeech(recognition);
+      }
+    };
+  }, [recognition]);
+
   const toggleListening = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -39,9 +70,15 @@ export default function GeminiInput({ onParseSubmit, loading }) {
         } catch (e) {
           console.error(e);
         }
+        cleanupSpeech(recognition);
       }
       setIsListening(false);
       return;
+    }
+
+    // 自動聚焦到輸入框
+    if (textareaRef.current) {
+      textareaRef.current.focus();
     }
 
     try {
@@ -67,10 +104,12 @@ export default function GeminiInput({ onParseSubmit, loading }) {
           alert('語音輸入失敗：' + event.error);
         }
         setIsListening(false);
+        cleanupSpeech(rec);
       };
 
       rec.onend = () => {
         setIsListening(false);
+        cleanupSpeech(rec);
       };
 
       rec.start();
@@ -149,6 +188,7 @@ export default function GeminiInput({ onParseSubmit, loading }) {
             )}
           </div>
           <textarea
+            ref={textareaRef}
             className="form-textarea"
             style={{ minHeight: '90px' }}
             placeholder="例：明天下午跟朋友喝咖啡花了 350 元、昨天買午餐 120 元，加滷蛋 15 元"
@@ -219,42 +259,48 @@ export default function GeminiInput({ onParseSubmit, loading }) {
 
       {/* 解析成功預覽面板 */}
       {lastParsed && (
-        <div className="glass-panel ai-preview-card" style={{ marginTop: '20px' }}>
-          <div className="ai-preview-title">🎉 AI 解析成功並已寫入試算表</div>
-          <div className="ai-preview-grid">
-            <div className="ai-preview-label">🗓️ 消費日期</div>
-            <div className="ai-preview-value">{lastParsed.date}</div>
-
-            <div className="ai-preview-label">🏷️ 消費分類</div>
-            <div className="ai-preview-value">
-              <span style={{ 
-                background: 'rgba(161, 140, 209, 0.2)', 
-                color: '#fbc2eb', 
-                padding: '2px 8px', 
-                borderRadius: '4px',
-                fontWeight: '600'
-              }}>
-                {lastParsed.category}
-              </span>
-            </div>
-
-            <div className="ai-preview-label">🛍️ 項目名稱</div>
-            <div className="ai-preview-value">{lastParsed.item}</div>
-
-            <div className="ai-preview-label">💵 消費金額</div>
-            <div className="ai-preview-value" style={{ color: '#00f2fe', fontWeight: 'bold' }}>
-              ${lastParsed.amount.toLocaleString()}
-            </div>
-
-            {lastParsed.note && (
-              <>
-                <div className="ai-preview-label">📝 備註說明</div>
-                <div className="ai-preview-value" style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>
-                  {lastParsed.note}
-                </div>
-              </>
-            )}
+        <div style={{ marginTop: '20px' }}>
+          <div className="ai-preview-title" style={{ marginBottom: '10px', textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)' }}>
+            🎉 AI 成功解析並已寫入試算表 ({Array.isArray(lastParsed) ? lastParsed.length : 1} 筆)
           </div>
+          {(Array.isArray(lastParsed) ? lastParsed : [lastParsed]).map((item, idx) => (
+            <div className="glass-panel ai-preview-card" key={idx} style={{ marginBottom: '12px', padding: '16px' }}>
+              <div className="ai-preview-grid">
+                <div className="ai-preview-label">🗓️ 消費日期</div>
+                <div className="ai-preview-value">{item.date}</div>
+
+                <div className="ai-preview-label">🏷️ 消費分類</div>
+                <div className="ai-preview-value">
+                  <span style={{ 
+                    background: 'rgba(161, 140, 209, 0.2)', 
+                    color: '#fbc2eb', 
+                    padding: '2px 8px', 
+                    borderRadius: '4px',
+                    fontWeight: '600'
+                  }}>
+                    {item.category}
+                  </span>
+                </div>
+
+                <div className="ai-preview-label">🛍️ 項目名稱</div>
+                <div className="ai-preview-value">{item.item}</div>
+
+                <div className="ai-preview-label">💵 消費金額</div>
+                <div className="ai-preview-value" style={{ color: '#00f2fe', fontWeight: 'bold' }}>
+                  ${(Number(item.amount) || 0).toLocaleString()}
+                </div>
+
+                {item.note && (
+                  <>
+                    <div className="ai-preview-label">📝 備註說明</div>
+                    <div className="ai-preview-value" style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+                      {item.note}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
