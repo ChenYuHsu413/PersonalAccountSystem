@@ -190,6 +190,7 @@ function getStocksData() {
     totalProfitLoss += profitLoss;
 
     stocks.push({
+      row: i + 2,
       ticker: ticker,
       name: name,
       costPrice: costPrice,
@@ -210,4 +211,58 @@ function getStocksData() {
       totalProfitRate: totalCost > 0 ? Math.round((totalProfitLoss / totalCost) * 10000) / 100 : 0
     }
   };
+}
+
+/**
+ * 新增股票資料
+ * @param {Object} payload 包含 ticker, name, costPrice, shares
+ */
+function addStockRecord(payload) {
+  var headers = ["股票代號", "股票名稱", "平均成本", "股數", "即時股價", "市值", "損益"];
+  var sheet = getOrCreateSheet(STOCKS_SHEET_NAME, headers);
+  
+  if (!payload.ticker || !payload.name || payload.costPrice === undefined || payload.shares === undefined) {
+    throw new Error("新增股票失敗：缺少必填欄位（股票代號、名稱、平均成本、持有股數）");
+  }
+
+  var nextRow = sheet.getLastRow() + 1;
+  var ticker = payload.ticker.trim().toUpperCase();
+  
+  // 插入資料列，含內建公式：
+  // E: 即時股價, F: 市值, G: 損益
+  var rowData = [
+    ticker,
+    payload.name.trim(),
+    Number(payload.costPrice),
+    Number(payload.shares),
+    '=GOOGLEFINANCE("' + ticker + '", "price")',
+    '=D' + nextRow + '*E' + nextRow,
+    '=(E' + nextRow + '-C' + nextRow + ')*D' + nextRow
+  ];
+  
+  sheet.appendRow(rowData);
+  
+  return { 
+    success: true, 
+    message: "成功新增股票！已寫入試算表。" 
+  };
+}
+
+/**
+ * 刪除指定列號的股票
+ * @param {number} row 列號
+ */
+function deleteStockRecord(row) {
+  if (!row || isNaN(row) || row <= 1) {
+    throw new Error("無效的列號，無法刪除股票！");
+  }
+  
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(STOCKS_SHEET_NAME);
+  if (!sheet) {
+    throw new Error("找不到股票工作表！");
+  }
+  
+  sheet.deleteRow(row);
+  return { success: true, message: "成功刪除第 " + row + " 列股票！" };
 }

@@ -223,6 +223,79 @@ function App() {
     }
   };
 
+  // 呼叫 POST 新增股票
+  const handleAddStock = async (stock) => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return false;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'addStock',
+          payload: stock
+        })
+      });
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        showToast('📈 股票新增成功，已同步至 Google Sheets！', 'success');
+        fetchStocks();
+        return true;
+      } else {
+        showToast(`新增股票失敗: ${result.message}`, 'error');
+        return false;
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('新增股票連線失敗，請確認 GAS 專案權限已開放。', 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 呼叫 POST 刪除股票
+  const handleDeleteStock = async (row) => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'deleteStock',
+          payload: { row }
+        })
+      });
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        showToast('🗑️ 股票刪除成功！', 'success');
+        fetchStocks();
+      } else {
+        showToast(`刪除股票失敗: ${result.message}`, 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('刪除股票連線失敗，請確認 GAS 專案權限設定。', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* 標頭 */}
@@ -333,7 +406,13 @@ function App() {
         )}
         
         {activeTab === 'stocks' && (
-          <StockDashboard data={stockData} loading={loading} onRefresh={fetchStocks} />
+          <StockDashboard 
+            data={stockData} 
+            loading={loading} 
+            onRefresh={fetchStocks} 
+            onAddStock={handleAddStock}
+            onDeleteStock={handleDeleteStock}
+          />
         )}
 
         {activeTab === 'gemini' && (

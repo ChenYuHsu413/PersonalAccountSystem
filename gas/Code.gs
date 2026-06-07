@@ -83,6 +83,12 @@ function doPost(e) {
     } else if (action === 'deleteRecord') {
       // 刪除記帳明細 (定義於 Database.gs)
       responseData = deleteBookkeepingRecord(payload.row);
+    } else if (action === 'addStock') {
+      // 新增股票持股 (定義於 Database.gs)
+      responseData = addStockRecord(payload);
+    } else if (action === 'deleteStock') {
+      // 刪除股票持股 (定義於 Database.gs)
+      responseData = deleteStockRecord(payload.row);
     } else if (action === 'parseGemini') {
       // 呼叫 Gemini AI 解析自然語言並寫入 (定義於 Gemini.gs)
       responseData = parseAndAddWithGemini(payload);

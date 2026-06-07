@@ -6,13 +6,61 @@ export default function GeminiInput({ onParseSubmit, loading }) {
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [lastParsed, setLastParsed] = useState(null);
 
+  // 語音辨識相關狀態
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [recognition, setRecognition] = useState(null);
+
   // 載入與儲存本機 LocalStorage 中的 API Key，方便使用者測試
   useEffect(() => {
     const savedKey = localStorage.getItem('user_gemini_api_key');
     if (savedKey) {
       setApiKey(savedKey);
     }
+
+    // 初始化語音辨識
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setSpeechSupported(true);
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'zh-TW'; // 設為繁體中文
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setTextInput((prev) => (prev ? prev + ' ' + transcript : transcript));
+      };
+
+      rec.onerror = (event) => {
+        console.error('語音辨識出錯:', event.error);
+        setIsListening(false);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognition(rec);
+    }
   }, []);
+
+  const toggleListening = () => {
+    if (!recognition) return;
+    if (isListening) {
+      recognition.stop();
+    } else {
+      try {
+        recognition.start();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
 
   const handleApiKeyChange = (e) => {
     const key = e.target.value;
@@ -56,6 +104,31 @@ export default function GeminiInput({ onParseSubmit, loading }) {
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-secondary)' }}>記帳內容描述</span>
+            {speechSupported && (
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`clickable voice-record-btn ${isListening ? 'recording' : ''}`}
+                style={{
+                  background: isListening ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0, 242, 254, 0.1)',
+                  border: `1px solid ${isListening ? 'var(--color-danger)' : 'rgba(0, 242, 254, 0.3)'}`,
+                  color: isListening ? 'var(--color-danger)' : '#00f2fe',
+                  borderRadius: '16px',
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span className={isListening ? 'pulse-dot' : ''}>🎤</span>
+                {isListening ? '錄音中，請說話...' : '語音輸入'}
+              </button>
+            )}
+          </div>
           <textarea
             className="form-textarea"
             style={{ minHeight: '90px' }}
@@ -119,7 +192,7 @@ export default function GeminiInput({ onParseSubmit, loading }) {
           type="submit"
           className="btn-gradient-purple clickable"
           style={{ width: '100%', padding: '14px', fontSize: '16px' }}
-          disabled={loading || !textInput.trim()}
+          disabled={loading || !textInput.trim() || isListening}
         >
           {loading ? 'AI 解析並寫入中...' : 'AI 語意分析記帳 🪄'}
         </button>
