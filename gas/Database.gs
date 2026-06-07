@@ -66,6 +66,85 @@ function addBookkeepingRecord(payload) {
 }
 
 /**
+ * 讀取所有記帳資料
+ */
+function getBookkeepingRecords() {
+  var headers = ["日期", "分類", "項目", "金額", "備註"];
+  var sheet = getOrCreateSheet(BOOKKEEPING_SHEET_NAME, headers);
+  
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return { records: [] };
+  }
+  
+  // 取得所有資料 (排除標頭列)
+  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  var values = range.getValues();
+  
+  var records = [];
+  // 迴圈讀取每一行，保留真實列號 (row index)
+  for (var i = 0; i < values.length; i++) {
+    var row = values[i];
+    var date = row[0];
+    
+    // 如果日期為空，跳過
+    if (!date) continue;
+    
+    // 轉換日期格式為 YYYY-MM-DD
+    var dateStr = "";
+    if (date instanceof Date) {
+      var y = date.getFullYear();
+      var m = ("0" + (date.getMonth() + 1)).slice(-2);
+      var d = ("0" + date.getDate()).slice(-2);
+      dateStr = y + "-" + m + "-" + d;
+    } else {
+      dateStr = String(date);
+    }
+    
+    records.push({
+      row: i + 2, // 因為第一行是標頭 (1-based)，且 i=0 對應第二列，所以是 i + 2
+      date: dateStr,
+      category: row[1] || "未分類",
+      item: row[2] || "",
+      amount: Number(row[3]) || 0,
+      note: row[4] || ""
+    });
+  }
+  
+  // 按照日期由新到舊排序 (若日期相同，則按行號由大到小，即最新輸入的在最上面)
+  records.sort(function(a, b) {
+    var dateA = new Date(a.date).getTime();
+    var dateB = new Date(b.date).getTime();
+    if (dateA !== dateB) {
+      return dateB - dateA;
+    }
+    return b.row - a.row;
+  });
+  
+  return { records: records };
+}
+
+/**
+ * 刪除指定列號的記帳資料
+ * @param {number} row 列號
+ */
+function deleteBookkeepingRecord(row) {
+  if (!row || isNaN(row) || row <= 1) {
+    throw new Error("無效的列號，無法刪除！");
+  }
+  
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(BOOKKEEPING_SHEET_NAME);
+  if (!sheet) {
+    throw new Error("找不到記帳工作表！");
+  }
+  
+  sheet.deleteRow(row);
+  return { success: true, message: "成功刪除第 " + row + " 列資料！" };
+}
+
+
+/**
  * 讀取即時股票資料
  * 包含從工作表中自動讀取 GOOGLEFINANCE 計算出來的數值
  */

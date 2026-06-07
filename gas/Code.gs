@@ -34,12 +34,15 @@ function doGet(e) {
     if (action === 'getStocks') {
       // 讀取股票報價邏輯 (定義於 Database.gs)
       responseData = getStocksData();
+    } else if (action === 'getRecords') {
+      // 讀取記帳歷史明細 (定義於 Database.gs)
+      responseData = getBookkeepingRecords();
     } else if (action === 'getPing') {
       responseData = { status: "success", message: "API 連線測試成功！" };
     } else {
       responseData = { 
         status: "error", 
-        message: "未指定的 action 或不支援的 GET 請求。可用動作: action=getStocks" 
+        message: "未指定的 action 或不支援的 GET 請求。可用動作: action=getStocks, getRecords" 
       };
     }
 
@@ -77,6 +80,9 @@ function doPost(e) {
     if (action === 'addRecord') {
       // 寫入記帳資料邏輯 (定義於 Database.gs)
       responseData = addBookkeepingRecord(payload);
+    } else if (action === 'deleteRecord') {
+      // 刪除記帳明細 (定義於 Database.gs)
+      responseData = deleteBookkeepingRecord(payload.row);
     } else if (action === 'parseGemini') {
       // 呼叫 Gemini AI 解析自然語言並寫入 (定義於 Gemini.gs)
       responseData = parseAndAddWithGemini(payload);

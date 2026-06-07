@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import BookkeepingForm from './components/BookkeepingForm';
 import StockDashboard from './components/StockDashboard';
 import GeminiInput from './components/GeminiInput';
+import BookkeepingHistory from './components/BookkeepingHistory';
 import './App.css';
 
 function App() {
@@ -10,6 +11,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stockData, setStockData] = useState(null);
+  const [records, setRecords] = useState(null);
   
   // Toast 訊息狀態
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
@@ -28,6 +30,13 @@ function App() {
   useEffect(() => {
     if (activeTab === 'stocks' && gasUrl) {
       fetchStocks();
+    }
+  }, [activeTab, gasUrl]);
+
+  // 當切換到歷史紀錄時，自動載入
+  useEffect(() => {
+    if (activeTab === 'history' && gasUrl) {
+      fetchRecords();
     }
   }, [activeTab, gasUrl]);
 
@@ -78,6 +87,32 @@ function App() {
     }
   };
 
+  // 呼叫 GET 取得歷史記帳明細
+  const fetchRecords = async () => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`${gasUrl}?action=getRecords`, {
+        method: 'GET',
+        mode: 'cors'
+      });
+      const data = await response.json();
+      if (data.status === 'error') {
+        showToast(`讀取歷史紀錄失敗: ${data.message}`, 'error');
+      } else {
+        setRecords(data.records);
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('網路連線失敗，請檢查 URL 是否正確並已設定為「所有人」存取。', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 呼叫 POST 新增記帳明細
   const handleAddRecord = async (record) => {
     if (!gasUrl) {
@@ -102,6 +137,7 @@ function App() {
       
       if (result.status === 'success') {
         showToast('🎉 記帳成功，已同步至 Google Sheets！', 'success');
+        setRecords(null); // 使歷史清單失效，下次切換分頁時重新獲取
       } else {
         showToast(`記帳失敗: ${result.message}`, 'error');
       }
@@ -136,6 +172,7 @@ function App() {
       
       if (result.status === 'success') {
         showToast('🪄 AI 解析完成並成功寫入！', 'success');
+        setRecords(null); // 使歷史清單失效，下次切換分頁時重新獲取
         return result.data;
       } else {
         showToast(`AI 解析失敗: ${result.message}`, 'error');
@@ -145,6 +182,42 @@ function App() {
       console.error(error);
       showToast('AI 解析連線失敗，請確認 API Key 與後端設定。', 'error');
       return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 呼叫 POST 刪除記帳明細
+  const handleDeleteRecord = async (row) => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'deleteRecord',
+          payload: { row }
+        })
+      });
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        showToast('🗑️ 刪除成功，試算表已同步更新！', 'success');
+        // 重新獲取明細以刷新頁面
+        fetchRecords();
+      } else {
+        showToast(`刪除失敗: ${result.message}`, 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('刪除連線失敗，請確認 GAS 專案權限設定。', 'error');
     } finally {
       setLoading(false);
     }
@@ -245,6 +318,12 @@ function App() {
         >
           ✨ AI 記帳
         </button>
+        <button 
+          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          📊 歷史帳目
+        </button>
       </nav>
 
       {/* 分頁內容 */}
@@ -259,6 +338,15 @@ function App() {
 
         {activeTab === 'gemini' && (
           <GeminiInput onParseSubmit={handleGeminiParse} loading={loading} />
+        )}
+
+        {activeTab === 'history' && (
+          <BookkeepingHistory 
+            records={records} 
+            loading={loading} 
+            onRefresh={fetchRecords} 
+            onDelete={handleDeleteRecord} 
+          />
         )}
       </main>
 
