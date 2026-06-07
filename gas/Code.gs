@@ -37,6 +37,9 @@ function doGet(e) {
     } else if (action === 'getRecords') {
       // 讀取記帳歷史明細 (定義於 Database.gs)
       responseData = getBookkeepingRecords();
+    } else if (action === 'getWatchlist') {
+      // 讀取自選追蹤股票 (定義於 Database.gs)
+      responseData = getWatchlistData();
     } else if (action === 'getPing') {
       responseData = { status: "success", message: "API 連線測試成功！" };
     } else {
@@ -98,6 +101,12 @@ function doPost(e) {
     } else if (action === 'checkStock') {
       // 驗證股票代碼並取得即時資料 (定義於 Database.gs)
       responseData = checkStockTicker(payload.ticker);
+    } else if (action === 'addWatchlist') {
+      // 新增自選股票 (定義於 Database.gs)
+      responseData = addWatchlistRecord(payload);
+    } else if (action === 'deleteWatchlist') {
+      // 刪除自選股票 (定義於 Database.gs)
+      responseData = deleteWatchlistRecord(payload.row);
     } else if (action === 'parseGemini') {
       // 呼叫 Gemini AI 解析自然語言並寫入 (定義於 Gemini.gs)
       responseData = parseAndAddWithGemini(payload);

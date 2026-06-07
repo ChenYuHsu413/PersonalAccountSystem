@@ -6,6 +6,7 @@
 
 var BOOKKEEPING_SHEET_NAME = "Bookkeeping";
 var STOCKS_SHEET_NAME = "Stocks";
+var WATCHLIST_SHEET_NAME = "Watchlist";
 
 /**
  * 取得或自動初始化指定的工作表
@@ -368,4 +369,93 @@ function checkStockTicker(ticker) {
     name: nameStr,
     currentPrice: Number(price)
   };
+}
+
+/**
+ * 讀取所有自選追蹤股票資料
+ */
+function getWatchlistData() {
+  var headers = ["股票代號", "股票名稱", "即時價格"];
+  var sheet = getOrCreateSheet(WATCHLIST_SHEET_NAME, headers);
+  
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return { watchlist: [] };
+  }
+  
+  // 取得所有資料 (排除標頭列)
+  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  var values = range.getValues();
+  
+  var watchlist = [];
+  for (var i = 0; i < values.length; i++) {
+    var row = values[i];
+    var ticker = row[0];
+    if (!ticker) continue;
+    
+    watchlist.push({
+      row: i + 2,
+      ticker: ticker,
+      name: row[1] || ticker,
+      currentPrice: Number(row[2]) || 0
+    });
+  }
+  
+  return { watchlist: watchlist };
+}
+
+/**
+ * 新增自選股票
+ * @param {Object} payload 包含 ticker, name
+ */
+function addWatchlistRecord(payload) {
+  var headers = ["股票代號", "股票名稱", "即時價格"];
+  var sheet = getOrCreateSheet(WATCHLIST_SHEET_NAME, headers);
+  
+  if (!payload.ticker || !payload.name) {
+    throw new Error("新增自選失敗：缺少必填欄位（股票代號、名稱）");
+  }
+  
+  var ticker = payload.ticker.trim().toUpperCase();
+  var name = payload.name.trim();
+  
+  // 檢查是否已在自選清單中，避免重複新增
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    var tickers = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < tickers.length; i++) {
+      if (tickers[i][0].toString().trim().toUpperCase() === ticker) {
+        throw new Error("股票代碼 " + ticker + " 已經在自選追蹤清單中！");
+      }
+    }
+  }
+  
+  var nextRow = sheet.getLastRow() + 1;
+  var rowData = [
+    ticker,
+    name,
+    '=GOOGLEFINANCE("' + ticker + '", "price")'
+  ];
+  sheet.appendRow(rowData);
+  
+  return { success: true, message: "成功新增自選股票！" };
+}
+
+/**
+ * 刪除指定列號的自選股票
+ * @param {number} row 列號
+ */
+function deleteWatchlistRecord(row) {
+  if (!row || isNaN(row) || row <= 1) {
+    throw new Error("無效的列號，無法刪除自選股票！");
+  }
+  
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(WATCHLIST_SHEET_NAME);
+  if (!sheet) {
+    throw new Error("找不到自選股票工作表！");
+  }
+  
+  sheet.deleteRow(row);
+  return { success: true, message: "成功刪除第 " + row + " 列自選股票！" };
 }

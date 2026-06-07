@@ -3,6 +3,7 @@ import BookkeepingForm from './components/BookkeepingForm';
 import StockDashboard from './components/StockDashboard';
 import GeminiInput from './components/GeminiInput';
 import BookkeepingHistory from './components/BookkeepingHistory';
+import WatchlistDashboard from './components/WatchlistDashboard';
 import './App.css';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [stockData, setStockData] = useState(null);
   const [records, setRecords] = useState(null);
+  const [watchlistData, setWatchlistData] = useState([]);
   
   // Toast 訊息狀態
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
@@ -37,6 +39,13 @@ function App() {
   useEffect(() => {
     if (activeTab === 'history' && gasUrl) {
       fetchRecords();
+    }
+  }, [activeTab, gasUrl]);
+
+  // 當切換到自選追蹤時，自動載入
+  useEffect(() => {
+    if (activeTab === 'watchlist' && gasUrl) {
+      fetchWatchlist();
     }
   }, [activeTab, gasUrl]);
 
@@ -409,6 +418,106 @@ function App() {
     }
   };
 
+  // 呼叫 GET 取得自選股票清單
+  const fetchWatchlist = async () => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`${gasUrl}?action=getWatchlist`, {
+        method: 'GET',
+        mode: 'cors'
+      });
+      const data = await response.json();
+      if (data.status === 'error') {
+        showToast(`讀取自選清單失敗: ${data.message}`, 'error');
+      } else {
+        setWatchlistData(data.watchlist || []);
+        showToast('自選股票報價已更新！', 'success');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('網路連線失敗，請檢查 URL 是否正確。', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 呼叫 POST 新增自選股票
+  const handleAddWatchlist = async (stock) => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return false;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'addWatchlist',
+          payload: stock
+        })
+      });
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        showToast('👀 已加入自選追蹤清單！', 'success');
+        fetchWatchlist();
+        return true;
+      } else {
+        showToast(`新增自選失敗: ${result.message}`, 'error');
+        return false;
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('新增自選連線失敗，請確認 GAS 專案權限已開放。', 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 呼叫 POST 刪除自選股票
+  const handleDeleteWatchlist = async (row) => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'deleteWatchlist',
+          payload: { row }
+        })
+      });
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        showToast('🗑️ 自選股票已移除！', 'success');
+        fetchWatchlist();
+      } else {
+        showToast(`移除自選失敗: ${result.message}`, 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('移除自選連線失敗，請確認 GAS 專案權限設定。', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* 標頭 */}
@@ -505,6 +614,12 @@ function App() {
           ✨ AI 記帳
         </button>
         <button 
+          className={`tab-btn ${activeTab === 'watchlist' ? 'active' : ''}`}
+          onClick={() => setActiveTab('watchlist')}
+        >
+          👀 自選追蹤
+        </button>
+        <button 
           className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
@@ -533,6 +648,17 @@ function App() {
 
         {activeTab === 'gemini' && (
           <GeminiInput onParseSubmit={handleGeminiParse} loading={loading} />
+        )}
+
+        {activeTab === 'watchlist' && (
+          <WatchlistDashboard 
+            data={watchlistData}
+            loading={loading}
+            onRefresh={fetchWatchlist}
+            onAddWatchlist={handleAddWatchlist}
+            onDeleteWatchlist={handleDeleteWatchlist}
+            onCheckStock={handleCheckStock}
+          />
         )}
 
         {activeTab === 'history' && (
