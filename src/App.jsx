@@ -334,6 +334,44 @@ function App() {
     }
   };
 
+  // 呼叫 POST 修改股票成本價
+  const handleUpdateStockCostPrice = async (row, costPrice) => {
+    if (!gasUrl) {
+      showToast('請先設定後端 GAS 部署 URL。', 'error');
+      return false;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'updateStockCostPrice',
+          payload: { row, costPrice }
+        })
+      });
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        showToast('✏️ 成本單價更新成功！', 'success');
+        fetchStocks();
+        return true;
+      } else {
+        showToast(`成本更新失敗: ${result.message}`, 'error');
+        return false;
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('更新成本連線失敗，請確認 GAS 專案權限設定。', 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* 標頭 */}
@@ -451,6 +489,7 @@ function App() {
             onAddStock={handleAddStock}
             onDeleteStock={handleDeleteStock}
             onUpdateStockShares={handleUpdateStockShares}
+            onUpdateStockCostPrice={handleUpdateStockCostPrice}
           />
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function StockDashboard({ data, loading, onRefresh, onAddStock, onDeleteStock, onUpdateStockShares }) {
+export default function StockDashboard({ data, loading, onRefresh, onAddStock, onDeleteStock, onUpdateStockShares, onUpdateStockCostPrice }) {
   const { stocks = [], summary = { totalCost: 0, totalValue: 0, totalProfitLoss: 0, totalProfitRate: 0 } } = data || {};
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -13,6 +13,10 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
   // 修改股數狀態
   const [editingRow, setEditingRow] = useState(null);
   const [editSharesValue, setEditSharesValue] = useState('');
+
+  // 修改成本單價狀態
+  const [editingCostRow, setEditingCostRow] = useState(null);
+  const [editCostPriceValue, setEditCostPriceValue] = useState('');
 
   const [deleteConfirmRow, setDeleteConfirmRow] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -31,10 +35,15 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
     e.preventDefault();
     if (!ticker.trim() || !name.trim() || !costPrice || !shares) return;
 
+    let finalTicker = ticker.trim().toUpperCase();
+    if (/^\d+$/.test(finalTicker)) {
+      finalTicker = 'TPE:' + finalTicker;
+    }
+
     setIsSaving(true);
     try {
       const success = await onAddStock({
-        ticker: ticker.trim().toUpperCase(),
+        ticker: finalTicker,
         name: name.trim(),
         costPrice: Number(costPrice),
         shares: Number(shares)
@@ -63,6 +72,24 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
       const success = await onUpdateStockShares(row, Number(editSharesValue));
       if (success) {
         setEditingRow(null);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const startEditCost = (stock) => {
+    setEditingCostRow(stock.row);
+    setEditCostPriceValue(stock.costPrice);
+  };
+
+  const handleSaveCostPrice = async (row) => {
+    if (editCostPriceValue === '' || isNaN(editCostPriceValue) || Number(editCostPriceValue) < 0) return;
+    setIsSaving(true);
+    try {
+      const success = await onUpdateStockCostPrice(row, Number(editCostPriceValue));
+      if (success) {
+        setEditingCostRow(null);
       }
     } finally {
       setIsSaving(false);
@@ -164,6 +191,43 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
 
         {showAddForm && (
           <div className="glass-panel" style={{ padding: '16px', marginTop: '12px', background: 'rgba(13, 20, 35, 0.85)' }}>
+            {/* 常用股快速填入 */}
+            <div style={{ marginBottom: '12px', borderBottom: '1px dashed rgba(255,255,255,0.08)', paddingBottom: '12px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', fontWeight: '600' }}>💡 常用股快速填入：</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {[
+                  { ticker: 'TPE:2330', name: '台積電' },
+                  { ticker: 'TPE:0050', name: '元大台灣50' },
+                  { ticker: 'TPE:2317', name: '鴻海' },
+                  { ticker: 'NASDAQ:NVDA', name: 'Nvidia' },
+                  { ticker: 'NASDAQ:AAPL', name: 'Apple' },
+                  { ticker: 'NASDAQ:TSLA', name: 'Tesla' }
+                ].map(qs => (
+                  <button
+                    key={qs.ticker}
+                    type="button"
+                    onClick={() => {
+                      setTicker(qs.ticker);
+                      setName(qs.name);
+                    }}
+                    style={{
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                      padding: '4px 10px',
+                      fontSize: '11px',
+                      color: '#00f2fe',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    className="clickable"
+                  >
+                    {qs.name} ({qs.ticker.split(':')[1] || qs.ticker})
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group" style={{ marginBottom: '0' }}>
@@ -177,6 +241,16 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
                     required
                     style={{ padding: '8px 12px', fontSize: '14px' }}
                   />
+                  {ticker && /^\d+$/.test(ticker.trim()) && (
+                    <div style={{ fontSize: '10px', color: '#34d399', marginTop: '4px', lineHeight: '1.2' }}>
+                      🟢 偵測為台股，送出時將自動補上為 <strong>TPE:{ticker.trim()}</strong>
+                    </div>
+                  )}
+                  {ticker && /^[a-zA-Z]+$/.test(ticker.trim()) && (
+                    <div style={{ fontSize: '10px', color: '#fbbf24', marginTop: '4px', lineHeight: '1.2' }}>
+                      🟡 提示：美股代號建議加上交易所字首，如 <strong>NASDAQ:{ticker.trim().toUpperCase()}</strong>
+                    </div>
+                  )}
                 </div>
                 <div className="form-group" style={{ marginBottom: '0' }}>
                   <label className="form-label" style={{ fontSize: '12px' }}>股票名稱</label>
@@ -329,9 +403,54 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '10px' }}>
                   {/* 左側：成本資訊 */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>成本單價</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>${(stock.costPrice || 0).toFixed(1)}</span>
+                      {editingCostRow === stock.row ? (
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          <input
+                            type="number"
+                            step="any"
+                            value={editCostPriceValue}
+                            onChange={(e) => setEditCostPriceValue(e.target.value)}
+                            style={{
+                              width: '60px',
+                              background: 'var(--bg-input)',
+                              border: '1px solid var(--border-color-active)',
+                              color: '#fff',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              padding: '2px 4px',
+                              outline: 'none'
+                            }}
+                            required
+                          />
+                          <button
+                            onClick={() => handleSaveCostPrice(stock.row)}
+                            style={{ background: 'transparent', border: 'none', color: '#00f2fe', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+                            title="儲存"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={() => setEditingCostRow(null)}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+                            title="取消"
+                          >
+                            ✗
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>${(stock.costPrice || 0).toFixed(1)}</span>
+                          <button
+                            onClick={() => startEditCost(stock)}
+                            style={{ background: 'transparent', border: 'none', color: '#00f2fe', cursor: 'pointer', fontSize: '11px', padding: '0' }}
+                            title="修改成本單價"
+                          >
+                            ✏️
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

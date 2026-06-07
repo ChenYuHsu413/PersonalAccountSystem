@@ -290,3 +290,27 @@ function updateStockShares(row, shares) {
   sheet.getRange(row, 4).setValue(Number(shares));
   return { success: true, message: "成功將第 " + row + " 列股數更新為 " + shares + " 股！" };
 }
+
+/**
+ * 修改指定個股的平均成本價
+ * @param {number} row 列號
+ * @param {number} costPrice 新成本價
+ */
+function updateStockCostPrice(row, costPrice) {
+  if (!row || isNaN(row) || row <= 1) {
+    throw new Error("無效的列號，無法更新平均成本價！");
+  }
+  if (costPrice === undefined || isNaN(costPrice) || costPrice < 0) {
+    throw new Error("請輸入有效的平均成本價！");
+  }
+  
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(STOCKS_SHEET_NAME);
+  if (!sheet) {
+    throw new Error("找不到股票工作表！");
+  }
+  
+  // C 欄為平均成本 (Column 3)
+  sheet.getRange(row, 3).setValue(Number(costPrice));
+  return { success: true, message: "成功將第 " + row + " 列平均成本更新為 " + costPrice + " 元！" };
+}
