@@ -266,3 +266,27 @@ function deleteStockRecord(row) {
   sheet.deleteRow(row);
   return { success: true, message: "成功刪除第 " + row + " 列股票！" };
 }
+
+/**
+ * 修改指定個股的股數
+ * @param {number} row 列號
+ * @param {number} shares 新股數
+ */
+function updateStockShares(row, shares) {
+  if (!row || isNaN(row) || row <= 1) {
+    throw new Error("無效的列號，無法更新股數！");
+  }
+  if (shares === undefined || isNaN(shares) || shares < 0) {
+    throw new Error("請輸入有效的股數！");
+  }
+  
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(STOCKS_SHEET_NAME);
+  if (!sheet) {
+    throw new Error("找不到股票工作表！");
+  }
+  
+  // D 欄為股數 (Column 4)
+  sheet.getRange(row, 4).setValue(Number(shares));
+  return { success: true, message: "成功將第 " + row + " 列股數更新為 " + shares + " 股！" };
+}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function StockDashboard({ data, loading, onRefresh, onAddStock, onDeleteStock }) {
+export default function StockDashboard({ data, loading, onRefresh, onAddStock, onDeleteStock, onUpdateStockShares }) {
   const { stocks = [], summary = { totalCost: 0, totalValue: 0, totalProfitLoss: 0, totalProfitRate: 0 } } = data || {};
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -9,6 +9,10 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
   const [costPrice, setCostPrice] = useState('');
   const [shares, setShares] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // 修改股數狀態
+  const [editingRow, setEditingRow] = useState(null);
+  const [editSharesValue, setEditSharesValue] = useState('');
 
   const [deleteConfirmRow, setDeleteConfirmRow] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -41,6 +45,24 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
         setCostPrice('');
         setShares('');
         setShowAddForm(false);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const startEdit = (stock) => {
+    setEditingRow(stock.row);
+    setEditSharesValue(stock.shares);
+  };
+
+  const handleSaveShares = async (row) => {
+    if (editSharesValue === '' || isNaN(editSharesValue) || Number(editSharesValue) < 0) return;
+    setIsSaving(true);
+    try {
+      const success = await onUpdateStockShares(row, Number(editSharesValue));
+      if (success) {
+        setEditingRow(null);
       }
     } finally {
       setIsSaving(false);
@@ -252,7 +274,7 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
       </h3>
 
       <div className="stock-list">
-        {loading ? (
+        {loading && stocks.length === 0 ? (
           // 骨架屏載入狀態
           [1, 2].map(i => (
             <div key={i} className="glass-panel stock-card" style={{ height: '76px' }}>
@@ -274,25 +296,13 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
           stocks.map((stock, idx) => {
             const isProfit = stock.profitLoss >= 0;
             return (
-              <div key={stock.ticker + '-' + idx} className="glass-panel stock-card" style={{ paddingRight: '16px' }}>
-                <div className="stock-info">
+              <div key={stock.ticker + '-' + idx} className="glass-panel stock-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px', padding: '14px 16px' }}>
+                {/* 第一排：代號名稱與刪除按鈕 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="stock-ticker">{stock.ticker}</span>
-                    <span className="stock-name">{stock.name}</span>
+                    <span className="stock-ticker" style={{ fontSize: '15px' }}>{stock.ticker}</span>
+                    <span className="stock-name" style={{ fontSize: '13px' }}>{stock.name}</span>
                   </div>
-                  <div className="stock-cost">
-                    成本價: {(stock.costPrice || 0).toFixed(1)} | 庫存: {stock.shares.toLocaleString()} 股
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <div className="stock-price-block">
-                    <span className="stock-price">{(stock.currentPrice || 0).toFixed(2)}</span>
-                    <span className={`stock-profit ${isProfit ? 'positive' : 'negative'}`}>
-                      {isProfit ? '▲' : '▼'} {formatPercent(stock.profitRate)}
-                    </span>
-                  </div>
-
                   <button
                     onClick={() => setDeleteConfirmRow(stock.row)}
                     className="clickable"
@@ -300,19 +310,106 @@ export default function StockDashboard({ data, loading, onRefresh, onAddStock, o
                       background: 'rgba(239, 68, 68, 0.1)',
                       border: 'none',
                       color: 'var(--color-danger)',
-                      width: '28px',
-                      height: '28px',
+                      width: '26px',
+                      height: '26px',
                       borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      fontSize: '12px'
+                      fontSize: '11px'
                     }}
                     title="刪除此股票"
                   >
                     🗑️
                   </button>
+                </div>
+
+                {/* 第二排：數據資訊網格 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '10px' }}>
+                  {/* 左側：成本資訊 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>成本單價</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>${(stock.costPrice || 0).toFixed(1)}</span>
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>持有股數</span>
+                      {editingRow === stock.row ? (
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          <input
+                            type="number"
+                            value={editSharesValue}
+                            onChange={(e) => setEditSharesValue(e.target.value)}
+                            style={{
+                              width: '60px',
+                              background: 'var(--bg-input)',
+                              border: '1px solid var(--border-color-active)',
+                              color: '#fff',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              padding: '2px 4px',
+                              outline: 'none'
+                            }}
+                            required
+                          />
+                          <button
+                            onClick={() => handleSaveShares(stock.row)}
+                            style={{ background: 'transparent', border: 'none', color: '#00f2fe', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+                            title="儲存"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={() => setEditingRow(null)}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+                            title="取消"
+                          >
+                            ✗
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{(stock.shares || 0).toLocaleString()} 股</span>
+                          <button
+                            onClick={() => startEdit(stock)}
+                            style={{ background: 'transparent', border: 'none', color: '#00f2fe', cursor: 'pointer', fontSize: '11px', padding: '0' }}
+                            title="修改股數"
+                          >
+                            ✏️
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed rgba(255,255,255,0.05)', paddingTop: '4px' }}>
+                      <span>個股總成本</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
+                        {formatCurrency((stock.costPrice || 0) * (stock.shares || 0))}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 右側：市值損益 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>即時單價</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>${(stock.currentPrice || 0).toFixed(2)}</span>
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>目前現值</span>
+                      <span style={{ color: '#00f2fe', fontWeight: '700' }}>{formatCurrency(stock.marketValue || 0)}</span>
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed rgba(255,255,255,0.05)', paddingTop: '4px' }}>
+                      <span>帳面損益</span>
+                      <span style={{ fontWeight: '700', color: isProfit ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                        {stock.profitLoss >= 0 ? '+' : ''}{Math.round(stock.profitLoss).toLocaleString()} ({formatPercent(stock.profitRate)})
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
