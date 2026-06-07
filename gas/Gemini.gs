@@ -50,7 +50,7 @@ function parseAndAddWithGemini(payload) {
  * @param {string} apiKey Gemini API 金鑰
  */
 function parseTextWithGemini(text, apiKey) {
-  var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+  var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey;
   
   // 取得今天日期，作為基準供 Gemini 計算「昨天、明天、星期幾」等相對時間
   var today = new Date();

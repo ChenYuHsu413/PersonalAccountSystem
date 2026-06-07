@@ -18,14 +18,37 @@ export default function GeminiInput({ onParseSubmit, loading }) {
       setApiKey(savedKey);
     }
 
-    // 初始化語音辨識
+    // 僅偵測是否支援語音辨識
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       setSpeechSupported(true);
+    }
+  }, []);
+
+  const toggleListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('您的裝置或瀏覽器不支援語音辨識。');
+      return;
+    }
+
+    if (isListening) {
+      if (recognition) {
+        try {
+          recognition.stop();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
       const rec = new SpeechRecognition();
       rec.continuous = false;
       rec.interimResults = false;
-      rec.lang = 'zh-TW'; // 設為繁體中文
+      rec.lang = 'zh-TW';
 
       rec.onstart = () => {
         setIsListening(true);
@@ -38,6 +61,11 @@ export default function GeminiInput({ onParseSubmit, loading }) {
 
       rec.onerror = (event) => {
         console.error('語音辨識出錯:', event.error);
+        if (event.error === 'not-allowed') {
+          alert('請允許麥克風存取權限以使用語音輸入功能！');
+        } else {
+          alert('語音輸入失敗：' + event.error);
+        }
         setIsListening(false);
       };
 
@@ -45,20 +73,11 @@ export default function GeminiInput({ onParseSubmit, loading }) {
         setIsListening(false);
       };
 
+      rec.start();
       setRecognition(rec);
-    }
-  }, []);
-
-  const toggleListening = () => {
-    if (!recognition) return;
-    if (isListening) {
-      recognition.stop();
-    } else {
-      try {
-        recognition.start();
-      } catch (e) {
-        console.error(e);
-      }
+    } catch (e) {
+      console.error(e);
+      alert('無法啟動語音輸入：' + e.message);
     }
   };
 
