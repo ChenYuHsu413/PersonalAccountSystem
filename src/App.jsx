@@ -518,6 +518,10 @@ function App() {
     }
   };
 
+  // 判斷當前大分類組別 (記帳管理 / 投資理財)
+  const isBookkeepGroup = ['bookkeep', 'gemini', 'history'].includes(activeTab);
+  const mainTab = isBookkeepGroup ? 'bookkeep' : 'stocks';
+
   return (
     <div className="app-container">
       {/* 標頭 */}
@@ -593,38 +597,60 @@ function App() {
         </div>
       )}
 
-      {/* 導覽 Tab */}
-      <nav className="nav-tabs">
+      {/* 雙層選單導覽 */}
+      <div className="main-nav-tabs">
         <button 
-          className={`tab-btn ${activeTab === 'bookkeep' ? 'active' : ''}`}
+          className={`main-tab-btn ${mainTab === 'bookkeep' ? 'active' : ''}`}
           onClick={() => setActiveTab('bookkeep')}
         >
-          📝 手動記帳
+          💰 記帳管理
         </button>
         <button 
-          className={`tab-btn ${activeTab === 'stocks' ? 'active' : ''}`}
+          className={`main-tab-btn ${mainTab === 'stocks' ? 'active' : ''}`}
           onClick={() => setActiveTab('stocks')}
         >
-          📈 股票追蹤
+          📈 投資理財
         </button>
-        <button 
-          className={`tab-btn ${activeTab === 'gemini' ? 'active' : ''}`}
-          onClick={() => setActiveTab('gemini')}
-        >
-          ✨ AI 記帳
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'watchlist' ? 'active' : ''}`}
-          onClick={() => setActiveTab('watchlist')}
-        >
-          👀 自選追蹤
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          📊 歷史帳目
-        </button>
+      </div>
+
+      <nav className="sub-nav-tabs">
+        {mainTab === 'bookkeep' ? (
+          <>
+            <button 
+              className={`sub-tab-btn ${activeTab === 'bookkeep' ? 'active' : ''}`}
+              onClick={() => setActiveTab('bookkeep')}
+            >
+              📝 手動記帳
+            </button>
+            <button 
+              className={`sub-tab-btn ${activeTab === 'gemini' ? 'active' : ''}`}
+              onClick={() => setActiveTab('gemini')}
+            >
+              ✨ AI 記帳
+            </button>
+            <button 
+              className={`sub-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+              onClick={() => setActiveTab('history')}
+            >
+              📊 歷史帳目
+            </button>
+          </>
+        ) : (
+          <>
+            <button 
+              className={`sub-tab-btn ${activeTab === 'stocks' ? 'active' : ''}`}
+              onClick={() => setActiveTab('stocks')}
+            >
+              📈 股票追蹤
+            </button>
+            <button 
+              className={`sub-tab-btn ${activeTab === 'watchlist' ? 'active' : ''}`}
+              onClick={() => setActiveTab('watchlist')}
+            >
+              👀 自選追蹤
+            </button>
+          </>
+        )}
       </nav>
 
       {/* 分頁內容 */}

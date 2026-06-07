@@ -364,6 +364,54 @@ function checkStockTicker(ticker) {
     throw new Error("查無此股票代號 '" + cleanTicker + "'，請確認輸入是否正確。例如台股如 2330 需輸入 TPE:2330 (或純數字 2330)，美股如 AAPL 需輸入 NASDAQ:AAPL。");
   }
   
+  // 嘗試將英文名稱翻譯為繁體中文
+  if (/[a-zA-Z]/.test(nameStr)) {
+    try {
+      nameStr = LanguageApp.translate(nameStr, 'en', 'zh-TW');
+    } catch (e) {
+      console.warn("翻譯股票名稱失敗", e);
+    }
+  }
+
+  // 移除常見冗餘字尾 (不論原始為中文還是翻譯後為中文)
+  nameStr = nameStr.replace(/股份有限公司/g, "")
+                   .replace(/有限公司/g, "")
+                   .replace(/公司/g, "")
+                   .replace(/\s+Co\.,?\s*Ltd\.?/gi, "")
+                   .replace(/\s+Ltd\.?/gi, "")
+                   .replace(/\s+Inc\.?/gi, "")
+                   .replace(/\s+Corp\.?/gi, "")
+                   .replace(/\s+Corporation/gi, "")
+                   .trim();
+
+  // 常見股票簡稱映射
+  var commonShortNames = {
+    "台灣積體電路製造": "台積電",
+    "鴻海精密工業": "鴻海",
+    "聯華電子": "聯電",
+    "中華電信": "中華電",
+    "富邦金融控股": "富邦金",
+    "國泰金融控股": "國泰金",
+    "兆豐金融控股": "兆豐金",
+    "元大台灣卓越50基金": "元大台灣50",
+    "元大台灣卓越50": "元大台灣50",
+    "富邦台灣采吉50基金": "富邦台50",
+    "元大高股息證券投資信託基金": "元大高股息",
+    "元大高股息基金": "元大高股息",
+    "蘋果": "蘋果",
+    "蘋果電腦": "蘋果",
+    "微軟": "微軟",
+    "特斯拉": "特斯拉",
+    "輝達": "輝達",
+    "亞馬遜": "亞馬遜",
+    "字母": "Google",
+    "谷歌": "Google"
+  };
+
+  if (commonShortNames[nameStr]) {
+    nameStr = commonShortNames[nameStr];
+  }
+  
   return {
     ticker: cleanTicker,
     name: nameStr,
