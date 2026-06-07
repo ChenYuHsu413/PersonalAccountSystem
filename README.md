@@ -1,8 +1,8 @@
 # 💰 SmartLedger - 個人智慧記帳與股票追蹤系統
 
-[![Deploy to GitHub Pages](https://github.com/ChenYuHsu413/AccountSystem/actions/workflows/deploy.yml/badge.svg)](https://github.com/ChenYuHsu413/AccountSystem/actions/workflows/deploy.yml)
+[![Deploy to GitHub Pages](https://github.com/ChenYuHsu413/PersonalAccountSystem/actions/workflows/deploy.yml/badge.svg)](https://github.com/ChenYuHsu413/PersonalAccountSystem/actions/workflows/deploy.yml)
 
-> 🚀 **線上 Demo 連結**：[https://chenyuhsu413.github.io/AccountSystem/](https://chenyuhsu413.github.io/AccountSystem/)
+> 🚀 **線上 Demo 連結**：[https://chenyuhsu413.github.io/PersonalAccountSystem/](https://chenyuhsu413.github.io/PersonalAccountSystem/)
 
 `SmartLedger` 是一款專為手機與行動網頁優化的個人理財與資產追蹤系統。本系統採用 **Serverless 無伺服器架構**，前端以 React 19 + Vite 構建，並使用 **Google 試算表 (Google Sheets)** 作為雲端資料庫。同時整合了 **Gemini AI** 智慧解析與**語音輸入**功能，提供流暢、安全且極致美觀的個人記帳體驗。
 
@@ -58,8 +58,8 @@
 
 ### 1. 複製專案並安裝依賴
 ```bash
-git clone https://github.com/ChenYuHsu413/AccountSystem.git
-cd AccountSystem
+git clone https://github.com/ChenYuHsu413/PersonalAccountSystem.git
+cd PersonalAccountSystem
 npm install
 ```
 
